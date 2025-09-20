@@ -24,7 +24,18 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run script
-        run: python rss2pdf.py
+        run: |
+          FEEDS_FILE="feeds.txt"
+          OUTPUT_DIR="$GITHUB_WORKSPACE/output"
+
+          mkdir -p "$OUTPUT_DIR"
+
+          while read url; do
+            if [ -n "$url" ]; then
+              echo "Processing Feed: $url"
+              python3 rss2pdf.py "$url" "$OUTPUT_DIR"
+            fi
+          done < "$FEEDS_FILE"
         
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
