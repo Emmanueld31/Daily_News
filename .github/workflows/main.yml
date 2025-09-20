@@ -24,11 +24,11 @@ jobs:
           pip install -r requirements.txt
 
       - name: Install Playwright Browsers
-        run: pip install playwright && python -m playwright install --with-deps
-
+        run: python -m playwright install --with-deps
+        
       - name: Run script
         run: |
-          FEEDS_FILE="feeds.txt"
+          FEEDS_FILE="Feeds.txt"
           OUTPUT_DIR="$GITHUB_WORKSPACE/output"
 
           mkdir -p "$OUTPUT_DIR"
@@ -41,7 +41,7 @@ jobs:
           done < "$FEEDS_FILE"
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: daily-news-report
           path: .
