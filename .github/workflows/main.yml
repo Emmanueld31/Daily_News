@@ -25,7 +25,7 @@ jobs:
 
       - name: Run script
         run: |
-          FEEDS_FILE="feeds.txt"
+          FEEDS_FILE="Feeds.txt"
           OUTPUT_DIR="$GITHUB_WORKSPACE/output"
 
           mkdir -p "$OUTPUT_DIR"
