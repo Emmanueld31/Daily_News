@@ -30,15 +30,19 @@ jobs:
         run: |
           FEEDS_FILE="Feeds.txt"
           OUTPUT_DIR="$GITHUB_WORKSPACE/output"
-
           mkdir -p "$OUTPUT_DIR"
 
-          while read url; do
-            if [ -n "$url" ]; then
+          # normalise CRLF → LF
+          sed -i 's/\r$//' "$FEEDS_FILE"
+
+          while IFS= read -r raw || [ -n "$raw" ]; do
+            url="${raw%%#*}"                       # strip comments
+            url="$(printf '%s' "$url" | xargs)"    # trim
+            if [[ -n "$url" && "$url" =~ ^https?:// ]]; then
               echo "Processing Feed: $url"
-              python3 rss2pdf.py "$url" "$OUTPUT_DIR"
-            fi
-          done < "$FEEDS_FILE"
+              python3 rss2pdf.py "$url" "$OUTPUT_DIR" || echo "::warning::Failed $url"
+          fi
+        done < "$FEEDS_FILE"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
