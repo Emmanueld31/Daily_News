@@ -42,7 +42,7 @@ jobs:
               echo "Processing Feed: $url"
               python3 rss2pdf.py "$url" "$OUTPUT_DIR" || echo "::warning::Failed $url"
           fi
-        done < "$FEEDS_FILE"
+          done < "$FEEDS_FILE"
 
       - name: Upload Artifact
         if: always()
