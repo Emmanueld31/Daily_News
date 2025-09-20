@@ -1,6 +1,7 @@
 name: Daily News Routine
 
 on:
+  workflow_dispatch:
   schedule:
     - cron: '0 4 * * *' # This runs the workflow at 6:00 AM every day
 
