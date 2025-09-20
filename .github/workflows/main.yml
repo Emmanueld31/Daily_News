@@ -18,11 +18,14 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install dependencies
+     - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Install Playwright Browsers
+        run: python -m playwright install --with-deps
+    
       - name: Run script
         run: |
           FEEDS_FILE="Feeds.txt"
