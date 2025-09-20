@@ -1,0 +1,1 @@
+﻿#!/usr/bin/env bashset -euo pipefailin="${1:-Feeds.txt}"out="${2:-Feeds.txt}"tmp="$(mktemp)"cp "$in" "$in.bak"cat "$in" \| sed -e 's/\r$//' -e 's/#.*$//' -e 's/^[[:space:]]\+//' -e 's/[[:space:]]\+$//' \| grep -E '^https?://' \| grep -v '[[:space:]]' \| sort -u > "$tmp"mv "$tmp" "$out"echo "Cleaned feeds written to $out (backup at $in.bak)"
