@@ -3,7 +3,7 @@ name: Daily News Routine
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 4 * * *' # This runs the workflow at 6:00 AM every day
+    - cron: '0 3 * * *' # This runs the workflow at 5:00 AM every day
 
 jobs:
   build:
