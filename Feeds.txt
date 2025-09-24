@@ -12,10 +12,10 @@ https://www.nrc.nl/rss/
 https://www.dn.se/rss/
 https://www.svd.se/?service=rss
 https://veckorevyn.com/feed
-https://www.berlingske.dk/content/rss
+https://www.hln.be/rss.xml
 https://www.the-independent.com/topic/france/rss
 https://www.channel4.com/news/world/france/feed
-https://www.ft.com/france?format=rss
+https://www.telegraph.co.uk/news/rss.xml
 https://www.huffingtonpost.fr/rss/all_headline.xml
 https://lefigaro.fr/rss/figaro_actualites.xml
 https://www.leparisien.fr/une/rss.xml
@@ -31,11 +31,11 @@ https://www.aljazeera.com/xml/rss/all.xml
 https://feeds.bbci.co.uk/news/rss.xml
 https://feeds.npr.org/1001/rss.xml
 https://rss.dw.com/rdf/rss-en-all
-https://www.ft.com/?format=rss
+http://newsfeed.zeit.de/index
 https://www.nasa.gov/rss/dyn/breaking_news.rss
-https://www.rfi.fr/en/france/rss
+http://www.tagesschau.de/xml/rss2
 https://www.sudouest.fr/essentiel/rss.xml
-https://www.rfi.fr/en/rss
+http://rss.dziennik.pl/Dziennik-PL/
 https://hotelbusiness.com/feed/
 https://www.sleepermagazine.com/feed/
 https://theworldofhospitality.com/feed/
@@ -51,7 +51,7 @@ https://www.japantimes.co.jp/feed
 https://japantoday.com/feed
 https://soranews24.com/feed/
 https://www.restaurant-hospitality.com/rss.xml
-https://hotelbusiness.com/feed/
+https://www.eldiario.es/rss/
 https://www.sleepermagazine.com/feed/
 https://www.lepoint.fr/24h-infos/rss.xml
 https://www.standaard.be/rss
@@ -69,3 +69,13 @@ https://www.sciencealert.com/feed/gn/
 https://www.futurity.org/feed/
 https://www.hospitalityinvestor.com/rss/Hospitality Investor Homepage/xml
 https://hospitality-on.com/rss.xml
+https://e00-expansion.uecdn.es/rss/portada.xml
+https://www.atlasobscura.com/feeds/latest
+https://www.politico.eu/feed/
+https://www.euronews.com/rss?level=theme&name=news
+https://rss.nytimes.com/services/xml/rss/nyt/World.xml
+https://feeds.washingtonpost.com/rss/world
+https://feeds.reuters.com/reuters/topNews
+https://apnews.com/rss
+https://www.bloomberg.com/feed/podcast/bloomberg-daybreak-europe.xml
+https://www.wired.com/feed/rss
