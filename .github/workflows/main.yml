@@ -47,18 +47,18 @@ jobs:
           ls -lh "$OUTPUT_DIR" || true
 
       - name: Merge PDFs into single file
-        env:
-          OUTPUT_DIR: ${{ github.workspace }}/output
-        run: |
-          DATE=$(TZ=Europe/Amsterdam date +%F)
-          MERGED="Daily_News_${DATE}.pdf"
-          if [ -d "$OUTPUT_DIR" ] && ls "$OUTPUT_DIR"/*.pdf >/dev/null 2>&1; then
-            python merge_pdfs.py --pattern "*.pdf" --skip-encrypted -o "$MERGED" "$OUTPUT_DIR"
-            ls -lh "$MERGED"
-          else
-            echo "No PDFs to merge."
-            exit 78
-        fi
+  env:
+    OUTPUT_DIR: ${{ github.workspace }}/output
+  run: |
+    DATE=$(TZ=Europe/Amsterdam date +%F)
+    MERGED="Daily_News_${DATE}.pdf"
+    if [ -d "$OUTPUT_DIR" ] && ls "$OUTPUT_DIR"/*.pdf >/dev/null 2>&1; then
+      python merge_pdfs.py --pattern "*.pdf" --skip-encrypted -o "$MERGED" "$OUTPUT_DIR"
+      ls -lh "$MERGED"
+    else
+      echo "No PDFs to merge."
+      exit 78
+    fi
 
       - name: Package output (single PDF) and logs
         if: always()
