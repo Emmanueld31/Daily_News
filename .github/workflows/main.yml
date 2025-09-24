@@ -3,7 +3,7 @@ name: Daily News Routine
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 3 * * *' # This runs the workflow at 5:00 AM every day
+    - cron: '0 3 * * *'  # 03:00 UTC (~05:00 CEST / 04:00 CET)
 
 jobs:
   build:
@@ -11,28 +11,27 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: '3.11'
+          cache: 'pip'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          python -m playwright install --with-deps
 
-      - name: Install Playwright Browsers
-        run: python -m playwright install --with-deps
-        
-      - name: Run script
+      - name: Generate PDFs from RSS
+        env:
+          FEEDS_FILE: Feeds.txt
+          OUTPUT_DIR: ${{ github.workspace }}/output
         run: |
-          FEEDS_FILE="Feeds.txt"
-          OUTPUT_DIR="$GITHUB_WORKSPACE/output"
           mkdir -p "$OUTPUT_DIR"
-
-          # normalise CRLF → LF
+          # normalize CRLF -> LF
           sed -i 's/\r$//' "$FEEDS_FILE"
 
           while IFS= read -r raw || [ -n "$raw" ]; do
@@ -40,13 +39,60 @@ jobs:
             url="$(printf '%s' "$url" | xargs)"    # trim
             if [[ -n "$url" && "$url" =~ ^https?:// ]]; then
               echo "Processing Feed: $url"
-              python3 rss2pdf.py "$url" "$OUTPUT_DIR" || echo "::warning::Failed $url"
-          fi
+              python rss2pdf.py "$url" "$OUTPUT_DIR" || echo "::warning::Failed $url"
+            fi
           done < "$FEEDS_FILE"
 
-      - name: Upload Artifact
+          echo "Generated files:"
+          ls -lh "$OUTPUT_DIR" || true
+
+      - name: Merge PDFs into single file
+        env:
+          OUTPUT_DIR: ${{ github.workspace }}/output
+        run: |
+          DATE=$(TZ=Europe/Amsterdam date +%F)
+          MERGED="Daily_News_${DATE}.pdf"
+          if [ -d "$OUTPUT_DIR" ] && ls "$OUTPUT_DIR"/*.pdf >/dev/null 2>&1; then
+            python merge_pdfs.py --input-dir "$OUTPUT_DIR" --pattern "*.pdf" --out "$MERGED"
+            ls -lh "$MERGED"
+          else
+            echo "No PDFs to merge."
+            exit 78  # neutral exit; later steps are guarded with 'if: always()'
+          fi
+
+      - name: Package output (single PDF) and logs
+        if: always()
+        run: |
+          DATE=$(TZ=Europe/Amsterdam date +%F)
+          MERGED="Daily_News_${DATE}.pdf"
+          [ -f "$MERGED" ] && tar -czf daily_news.tar.gz "$MERGED" || true
+          [ -d logs ]      && tar -czf news_logs.tar.gz -C logs . || true
+          ls -lh *.tar.gz || true
+
+      - name: Encrypt packages
+        if: always()
+        env:
+          ARTIFACT_PASS: ${{ secrets.ARTIFACT_PASS }}
+        run: |
+          if [ -f daily_news.tar.gz ]; then
+            openssl enc -aes-256-cbc -salt -pbkdf2 \
+              -in daily_news.tar.gz -out daily_news.enc \
+              -pass env:ARTIFACT_PASS
+          fi
+          if [ -f news_logs.tar.gz ]; then
+            openssl enc -aes-256-cbc -salt -pbkdf2 \
+              -in news_logs.tar.gz -out news_logs.enc \
+              -pass env:ARTIFACT_PASS
+          fi
+          ls -lh *.enc || true
+
+      - name: Upload encrypted artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: daily-news-report
-          path: output
+          name: daily-news-encrypted-${{ github.run_id }}
+          path: |
+            daily_news.enc
+            news_logs.enc
+          retention-days: 14
+          if-no-files-found: warn
