@@ -1,6 +1,11 @@
 # OS
 .DS_Store
 
+# Editor/backup junk
+*~
+~$*
+*.bak
+
 # Python
 __pycache__/
 *.py[cod]
@@ -15,11 +20,3 @@ logs/
 *.tar.gz
 *.zip
 *.enc
-
-# Editor/backup junk
-*~
-~$*
-*.bak
-
-# Wheels/binaries
-*.whl
