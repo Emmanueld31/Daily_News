@@ -53,12 +53,12 @@ jobs:
           DATE=$(TZ=Europe/Amsterdam date +%F)
           MERGED="Daily_News_${DATE}.pdf"
           if [ -d "$OUTPUT_DIR" ] && ls "$OUTPUT_DIR"/*.pdf >/dev/null 2>&1; then
-            python merge_pdfs.py --input-dir "$OUTPUT_DIR" --pattern "*.pdf" --out "$MERGED"
+            python merge_pdfs.py --pattern "*.pdf" --skip-encrypted -o "$MERGED" "$OUTPUT_DIR"
             ls -lh "$MERGED"
           else
             echo "No PDFs to merge."
-            exit 78  # neutral exit; later steps are guarded with 'if: always()'
-          fi
+            exit 78
+        fi
 
       - name: Package output (single PDF) and logs
         if: always()
