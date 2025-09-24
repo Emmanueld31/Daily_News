@@ -37,7 +37,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$OUTPUT_DIR" logs
-          # tee this step's stdout/stderr to logs/main.log
+          # tee this step's output to logs only
           exec > >(tee -a logs/main.log) 2>&1
 
           echo "== Normalize feeds =="
@@ -45,12 +45,10 @@ jobs:
 
           echo "== Start generation =="
           while IFS= read -r raw || [ -n "$raw" ]; do
-            url="${raw%%#*}"                       # strip comments
-            url="$(printf '%s' "$url" | xargs)"    # trim
-            if [[ -n "$url" && "$url" =~ ^https?:// ]]; then
-              echo "Processing Feed: $url"
-              python rss2pdf.py "$url" "$OUTPUT_DIR" || echo "::warning::Failed $url"
-            fi
+            url="${raw%%#*}"; url="$(printf '%s' "$url" | xargs)"
+            [[ -n "$url" && "$url" =~ ^https?:// ]] || continue
+            echo "Processing Feed"
+            python rss2pdf.py "$url" "$OUTPUT_DIR" || echo "::warning::Failed feed"
           done < "$FEEDS_FILE"
 
           echo "Generated files:"
@@ -62,11 +60,13 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p logs
-          # tee this step too
           exec > >(tee -a logs/main.log) 2>&1
 
-          DATE=$(TZ=Europe/Amsterdam date +%F)
-          MERGED="$OUTPUT_DIR/Daily_News_${DATE}.pdf"
+          # YYMMDD format for filename
+          DATE_SHORT=$(TZ=Europe/Amsterdam date +%y%m%d)
+          BASENAME="${DATE_SHORT} - Daily Newspapers.pdf"
+          MERGED="$OUTPUT_DIR/$BASENAME"
+
           echo "== Merge =="
           if [ -d "$OUTPUT_DIR" ] && ls "$OUTPUT_DIR"/*.pdf >/dev/null 2>&1; then
             python merge_pdfs.py --pattern "*.pdf" --skip-encrypted -o "$MERGED" "$OUTPUT_DIR"
@@ -81,12 +81,13 @@ jobs:
         if: always()
         run: |
           set -euo pipefail
-          DATE=$(TZ=Europe/Amsterdam date +%F)
-          MERGED="output/Daily_News_${DATE}.pdf"
+          DATE_SHORT=$(TZ=Europe/Amsterdam date +%y%m%d)
+          BASENAME="${DATE_SHORT} - Daily Newspapers.pdf"
+          MERGED="output/$BASENAME"
 
           # Package the merged PDF (without the output/ prefix inside the tar)
           if [ -f "$MERGED" ]; then
-            tar -czf daily_news.tar.gz -C output "$(basename "$MERGED")"
+            tar -czf daily_news.tar.gz -C output "$BASENAME"
           fi
 
           # Package logs if present
