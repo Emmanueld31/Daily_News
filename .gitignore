@@ -20,3 +20,6 @@ logs/
 *.tar.gz
 *.zip
 *.enc
+*.log
+*.csv
+.DS_Store
