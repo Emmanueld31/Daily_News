@@ -35,10 +35,15 @@ jobs:
           FEEDS_FILE: Feeds.txt
           OUTPUT_DIR: ${{ github.workspace }}/output
         run: |
-          mkdir -p "$OUTPUT_DIR"
-          # normalize CRLF -> LF
-          sed -i 's/\r$//' "$FEEDS_FILE"
+          set -euo pipefail
+          mkdir -p "$OUTPUT_DIR" logs
+          # tee this step's stdout/stderr to logs/main.log
+          exec > >(tee -a logs/main.log) 2>&1
 
+          echo "== Normalize feeds =="
+          sed -i 's/\r$//' "$FEEDS_FILE" || true
+
+          echo "== Start generation =="
           while IFS= read -r raw || [ -n "$raw" ]; do
             url="${raw%%#*}"                       # strip comments
             url="$(printf '%s' "$url" | xargs)"    # trim
@@ -55,10 +60,17 @@ jobs:
         env:
           OUTPUT_DIR: ${{ github.workspace }}/output
         run: |
+          set -euo pipefail
+          mkdir -p logs
+          # tee this step too
+          exec > >(tee -a logs/main.log) 2>&1
+
           DATE=$(TZ=Europe/Amsterdam date +%F)
           MERGED="$OUTPUT_DIR/Daily_News_${DATE}.pdf"
+          echo "== Merge =="
           if [ -d "$OUTPUT_DIR" ] && ls "$OUTPUT_DIR"/*.pdf >/dev/null 2>&1; then
             python merge_pdfs.py --pattern "*.pdf" --skip-encrypted -o "$MERGED" "$OUTPUT_DIR"
+            echo "Merged file:"
             ls -lh "$MERGED" || true
           else
             echo "No PDFs to merge."
@@ -68,13 +80,20 @@ jobs:
       - name: Package output (single PDF) and logs
         if: always()
         run: |
+          set -euo pipefail
           DATE=$(TZ=Europe/Amsterdam date +%F)
           MERGED="output/Daily_News_${DATE}.pdf"
+
+          # Package the merged PDF (without the output/ prefix inside the tar)
           if [ -f "$MERGED" ]; then
-            # Tar without the 'output/' prefix (nicer archive)
             tar -czf daily_news.tar.gz -C output "$(basename "$MERGED")"
           fi
-          [ -d logs ] && tar -czf news_logs.tar.gz -C logs . || true
+
+          # Package logs if present
+          if [ -d logs ]; then
+            tar -czf news_logs.tar.gz -C logs .
+          fi
+
           ls -lh *.tar.gz || true
 
       - name: Encrypt packages
@@ -82,6 +101,7 @@ jobs:
         env:
           ARTIFACT_PASS: ${{ secrets.ARTIFACT_PASS }}
         run: |
+          set -euo pipefail
           if [ -f daily_news.tar.gz ]; then
             openssl enc -aes-256-cbc -salt -pbkdf2 \
               -in daily_news.tar.gz -out daily_news.enc \
