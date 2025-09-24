@@ -1,1 +1,6 @@
-﻿FeedparserTrafilaturaRequestsPypdfplaywright
+﻿Feedparser
+Trafilatura
+Requests
+Pypdf
+playwright
+PyPDF2>=3.0

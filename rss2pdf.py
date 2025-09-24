@@ -1,1 +1,146 @@
-﻿#!/usr//bin/env python3# -*- coding: utf-8 -*-import os, re, sys, time, tempfile, pathlibimport feedparser, trafilaturaimport requestsimport html as ihtmlfrom pypdf import PdfWriter, PdfReaderfrom playwright.sync_api import sync_playwrightUA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X) "      "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17 Safari/605.1.15")MAX_ITEMS = int(os.environ.get("MAX_ITEMS", "25"))MIN_WORDS = int(os.environ.get("MIN_WORDS", "100")) # I've lowered this from 400 for better resultsSLEEP     = float(os.environ.get("SLEEP", "0.4"))STYLE = (    "<meta charset='utf-8'>"    "<style>"    "body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;"    "max-width:760px;margin:40px auto;line-height:1.58;font-size:15px}"    "h1{font-size:22px;margin-bottom:4px}"    "hr{margin:18px 0;border:0;border-top:1px solid #ccc}"    ".info{font-size:12px;color:#555}"    "img{max-width:100%}"    "table{border-collapse:collapse}"    "td,th{border:1px solid #ddd;padding:4px}"    "</style>")def slug(s):    return re.sub(r"[^\w\-.]+","-", s, flags=re.U).strip("-")[:120]def wrap_html(title, url, html, feedname):    # <base> ensures relative images/links resolve correctly    head = STYLE + f"<base href='{url}'>"    header = ("<h1>"+title+"</h1>"              "<div class='info'>"+feedname+" · "              "<a href='"+url+"'>"+url+"</a></div><hr>")    return "<html><head>"+head+"</head><body>"+header+html+"</body></html>"def extract(url):    # 1) Download the page with a proper User-Agent    try:        r = requests.get(url, headers={"User-Agent": UA}, timeout=25)        if r.status_code >= 400 or not r.text:            return None        html_src = r.text    except Exception:        return None    # 2) Try trafilatura with newer signature    try:        return trafilatura.extract(            html_src,            output="html",            include_links=True,            include_tables=True,            favor_recall=True,        )    except TypeError:        # 3) Fallback for older trafilatura: use output_format and drop include_links        try:            return trafilatura.extract(                html_src,                output_format="html",                include_tables=True,                favor_recall=True,            )        except TypeError:            # 4) Last resort: plain text -> wrap in minimal HTML so PDF still renders            txt = trafilatura.extract(html_src, favor_recall=True) or ""            if not txt:                return None            safe = ihtml.escape(txt)            return "<div><pre style='white-space:pre-wrap'>" + safe + "</pre></div>"def build_pdf(feed_url, out_dir):    fp = feedparser.parse(feed_url, agent=UA)    feedname = fp.feed.get("title") or fp.feed.get("link") or feed_url    day = time.strftime("%Y-%m-%d")    tmp_pdfs = []    with sync_playwright() as p:        browser = p.chromium.launch(headless=True)        context = browser.new_context(user_agent=UA)        for idx, e in enumerate(fp.entries[:MAX_ITEMS]):            url = e.get("link"); title = e.get("title") or (url or "Untitled")            if not url: continue            html = extract(url)            if not html: continue            words = len(re.findall(r"\w+", re.sub(r"<[^>]+>", " ", html)))            if words < MIN_WORDS:                continue            full_html = wrap_html(title, url, html, feedname)            pdf_path = os.path.join(tempfile.gettempdir(), f"{idx:03d}-{slug(title)}.pdf")            page = context.new_page()            page.set_content(full_html, wait_until="domcontentloaded")            page.wait_for_load_state("networkidle")            page.pdf(                path=pdf_path,                format="A4",                print_background=True,                margin={"top":"12mm","bottom":"12mm","left":"12mm","right":"12mm"},                prefer_css_page_size=True            )            page.close()            tmp_pdfs.append(pdf_path)            time.sleep(SLEEP)        browser.close()    if not tmp_pdfs:        return None    pathlib.Path(out_dir).mkdir(parents=True, exist_ok=True)    out_path = os.path.join(out_dir, f"{day} - {slug(feedname)}.pdf")    writer = PdfWriter()    for pth in tmp_pdfs:        for pg in PdfReader(pth).pages:            writer.add_page(pg)    with open(out_path, "wb") as f:        writer.write(f)    return out_pathdef main():    if len(sys.argv) < 2:        sys.stderr.write("Usage: rss2pdf.py <feed_url> [out_dir]\n"); sys.exit(1)    feed_url = sys.argv[1].strip()    out_dir = sys.argv[2] if len(sys.argv) > 2 else os.path.expanduser("~/Dropbox/Documents/Daily News")    try:        out = build_pdf(feed_url, out_dir)        print(out or "NO_ARTICLES")    except Exception as e:        print(f"ERROR:{type(e).__name__}:{e}")        sys.exit(0)  # don't kill the jobif __name__ == "__main__":    main()
+﻿#!/usr//bin/env python3
+# -*- coding: utf-8 -*-
+
+import os, re, sys, time, tempfile, pathlib
+import feedparser, trafilatura
+import requests
+import html as ihtml
+from pypdf import PdfWriter, PdfReader
+from playwright.sync_api import sync_playwright
+
+UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X) "
+      "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17 Safari/605.1.15")
+
+MAX_ITEMS = int(os.environ.get("MAX_ITEMS", "25"))
+MIN_WORDS = int(os.environ.get("MIN_WORDS", "100")) # I've lowered this from 400 for better results
+SLEEP     = float(os.environ.get("SLEEP", "0.4"))
+
+STYLE = (
+    "<meta charset='utf-8'>"
+    "<style>"
+    "body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;"
+    "max-width:760px;margin:40px auto;line-height:1.58;font-size:15px}"
+    "h1{font-size:22px;margin-bottom:4px}"
+    "hr{margin:18px 0;border:0;border-top:1px solid #ccc}"
+    ".info{font-size:12px;color:#555}"
+    "img{max-width:100%}"
+    "table{border-collapse:collapse}"
+    "td,th{border:1px solid #ddd;padding:4px}"
+    "</style>"
+)
+
+def slug(s):
+    return re.sub(r"[^\w\-.]+","-", s, flags=re.U).strip("-")[:120]
+
+def wrap_html(title, url, html, feedname):
+    # <base> ensures relative images/links resolve correctly
+    head = STYLE + f"<base href='{url}'>"
+    header = ("<h1>"+title+"</h1>"
+              "<div class='info'>"+feedname+" · "
+              "<a href='"+url+"'>"+url+"</a></div><hr>")
+    return "<html><head>"+head+"</head><body>"+header+html+"</body></html>"
+
+def extract(url):
+    # 1) Download the page with a proper User-Agent
+    try:
+        r = requests.get(url, headers={"User-Agent": UA}, timeout=25)
+        if r.status_code >= 400 or not r.text:
+            return None
+        html_src = r.text
+    except Exception:
+        return None
+
+    # 2) Try trafilatura with newer signature
+    try:
+        return trafilatura.extract(
+            html_src,
+            output="html",
+            include_links=True,
+            include_tables=True,
+            favor_recall=True,
+        )
+    except TypeError:
+        # 3) Fallback for older trafilatura: use output_format and drop include_links
+        try:
+            return trafilatura.extract(
+                html_src,
+                output_format="html",
+                include_tables=True,
+                favor_recall=True,
+            )
+        except TypeError:
+            # 4) Last resort: plain text -> wrap in minimal HTML so PDF still renders
+            txt = trafilatura.extract(html_src, favor_recall=True) or ""
+            if not txt:
+                return None
+            safe = ihtml.escape(txt)
+            return "<div><pre style='white-space:pre-wrap'>" + safe + "</pre></div>"
+
+def build_pdf(feed_url, out_dir):
+    fp = feedparser.parse(feed_url, agent=UA)
+    feedname = fp.feed.get("title") or fp.feed.get("link") or feed_url
+    day = time.strftime("%Y-%m-%d")
+    tmp_pdfs = []
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        context = browser.new_context(user_agent=UA)
+
+        for idx, e in enumerate(fp.entries[:MAX_ITEMS]):
+            url = e.get("link"); title = e.get("title") or (url or "Untitled")
+            if not url: continue
+
+            html = extract(url)
+            if not html: continue
+
+            words = len(re.findall(r"\w+", re.sub(r"<[^>]+>", " ", html)))
+            if words < MIN_WORDS:
+                continue
+
+            full_html = wrap_html(title, url, html, feedname)
+            pdf_path = os.path.join(tempfile.gettempdir(), f"{idx:03d}-{slug(title)}.pdf")
+
+            page = context.new_page()
+            page.set_content(full_html, wait_until="domcontentloaded")
+            page.wait_for_load_state("networkidle")
+            page.pdf(
+                path=pdf_path,
+                format="A4",
+                print_background=True,
+                margin={"top":"12mm","bottom":"12mm","left":"12mm","right":"12mm"},
+                prefer_css_page_size=True
+            )
+            page.close()
+            tmp_pdfs.append(pdf_path)
+            time.sleep(SLEEP)
+
+        browser.close()
+
+    if not tmp_pdfs:
+        return None
+
+    pathlib.Path(out_dir).mkdir(parents=True, exist_ok=True)
+    out_path = os.path.join(out_dir, f"{day} - {slug(feedname)}.pdf")
+
+    writer = PdfWriter()
+    for pth in tmp_pdfs:
+        for pg in PdfReader(pth).pages:
+            writer.add_page(pg)
+    with open(out_path, "wb") as f:
+        writer.write(f)
+    return out_path
+
+def main():
+    if len(sys.argv) < 2:
+        sys.stderr.write("Usage: rss2pdf.py <feed_url> [out_dir]\n"); sys.exit(1)
+    feed_url = sys.argv[1].strip()
+    out_dir = sys.argv[2] if len(sys.argv) > 2 else os.path.expanduser("~/Dropbox/Documents/Daily News")
+    try:
+        out = build_pdf(feed_url, out_dir)
+        print(out or "NO_ARTICLES")
+    except Exception as e:
+        print(f"ERROR:{type(e).__name__}:{e}")
+        sys.exit(0)  # don't kill the job
+
+if __name__ == "__main__":
+    main()
