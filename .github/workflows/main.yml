@@ -5,9 +5,14 @@ on:
   schedule:
     - cron: '0 3 * * *'  # 03:00 UTC (~05:00 CEST / 04:00 CET)
 
+concurrency:
+  group: daily-news
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
 
     steps:
       - name: Checkout repository
@@ -47,18 +52,18 @@ jobs:
           ls -lh "$OUTPUT_DIR" || true
 
       - name: Merge PDFs into single file
-  env:
-    OUTPUT_DIR: ${{ github.workspace }}/output
-  run: |
-    DATE=$(TZ=Europe/Amsterdam date +%F)
-    MERGED="Daily_News_${DATE}.pdf"
-    if [ -d "$OUTPUT_DIR" ] && ls "$OUTPUT_DIR"/*.pdf >/dev/null 2>&1; then
-      python merge_pdfs.py --pattern "*.pdf" --skip-encrypted -o "$MERGED" "$OUTPUT_DIR"
-      ls -lh "$MERGED"
-    else
-      echo "No PDFs to merge."
-      exit 78
-    fi
+        env:
+          OUTPUT_DIR: ${{ github.workspace }}/output
+        run: |
+          DATE=$(TZ=Europe/Amsterdam date +%F)
+          MERGED="Daily_News_${DATE}.pdf"
+          if [ -d "$OUTPUT_DIR" ] && ls "$OUTPUT_DIR"/*.pdf >/dev/null 2>&1; then
+            python merge_pdfs.py --pattern "*.pdf" --skip-encrypted -o "$MERGED" "$OUTPUT_DIR"
+            ls -lh "$MERGED"
+          else
+            echo "No PDFs to merge."
+            exit 78  # neutral; later steps still run due to 'if: always()'
+          fi
 
       - name: Package output (single PDF) and logs
         if: always()
