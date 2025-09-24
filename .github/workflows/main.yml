@@ -105,12 +105,12 @@ jobs:
           set -euo pipefail
           if [ -f daily_news.tar.gz ]; then
             openssl enc -aes-256-cbc -salt -pbkdf2 \
-              -in daily_news.tar.gz -out daily_news.enc \
+              -in daily_news.tar.gz -out daily_news.tar.gz.enc \
               -pass env:ARTIFACT_PASS
           fi
           if [ -f news_logs.tar.gz ]; then
             openssl enc -aes-256-cbc -salt -pbkdf2 \
-              -in news_logs.tar.gz -out news_logs.enc \
+              -in news_logs.tar.gz -out news_logs.tar.gz.enc \
               -pass env:ARTIFACT_PASS
           fi
           ls -lh *.enc || true
