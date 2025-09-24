@@ -56,10 +56,10 @@ jobs:
           OUTPUT_DIR: ${{ github.workspace }}/output
         run: |
           DATE=$(TZ=Europe/Amsterdam date +%F)
-          MERGED="Daily_News_${DATE}.pdf"
+          MERGED="$OUTPUT_DIR/Daily_News_${DATE}.pdf"
           if [ -d "$OUTPUT_DIR" ] && ls "$OUTPUT_DIR"/*.pdf >/dev/null 2>&1; then
             python merge_pdfs.py --pattern "*.pdf" --skip-encrypted -o "$MERGED" "$OUTPUT_DIR"
-            ls -lh "$MERGED"
+            ls -lh "$MERGED" || true
           else
             echo "No PDFs to merge."
             exit 78  # neutral; later steps still run due to 'if: always()'
@@ -69,9 +69,12 @@ jobs:
         if: always()
         run: |
           DATE=$(TZ=Europe/Amsterdam date +%F)
-          MERGED="Daily_News_${DATE}.pdf"
-          [ -f "$MERGED" ] && tar -czf daily_news.tar.gz "$MERGED" || true
-          [ -d logs ]      && tar -czf news_logs.tar.gz -C logs . || true
+          MERGED="output/Daily_News_${DATE}.pdf"
+          if [ -f "$MERGED" ]; then
+            # Tar without the 'output/' prefix (nicer archive)
+            tar -czf daily_news.tar.gz -C output "$(basename "$MERGED")"
+          fi
+          [ -d logs ] && tar -czf news_logs.tar.gz -C logs . || true
           ls -lh *.tar.gz || true
 
       - name: Encrypt packages
