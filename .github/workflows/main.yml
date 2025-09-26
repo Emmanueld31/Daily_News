@@ -62,19 +62,16 @@ jobs:
           mkdir -p logs
           exec > >(tee -a logs/main.log) 2>&1
 
-          # YYMMDD format for filename
           DATE_SHORT=$(TZ=Europe/Amsterdam date +%y%m%d)
           BASE="${DATE_SHORT} - Daily Newspapers"
           OUT_BASE="$OUTPUT_DIR/$BASE"   # no .pdf; script emits “ - Part N.pdf”
 
           echo "== Merge with chunking =="
           python merge_pdfs.py --pattern "*.pdf" --skip-encrypted --max-pages 1000 -o "$OUT_BASE" "$OUTPUT_DIR"
+
           echo "Merged parts:"
-          ls -lh "$OUTPUT_DIR/$BASE - Part "*".pdf" || true
-          else
-            echo "No PDFs to merge."
-            exit 78  # neutral; later steps still run due to 'if: always()'
-          fi
+          # robust listing (handles spaces/dashes safely)
+          find "$OUTPUT_DIR" -maxdepth 1 -type f -name "${BASE} - Part *.pdf" -print0 | xargs -0 ls -lh || true
 
       - name: Package output (all merged parts) and logs
         if: always()
