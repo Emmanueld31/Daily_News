@@ -54,7 +54,7 @@ jobs:
           echo "Generated files:"
           ls -lh "$OUTPUT_DIR" || true
 
-      - name: Merge PDFs into single file
+      - name: Merge PDFs into single file (chunked max 1000 pages)
         env:
           OUTPUT_DIR: ${{ github.workspace }}/output
         run: |
@@ -64,33 +64,37 @@ jobs:
 
           # YYMMDD format for filename
           DATE_SHORT=$(TZ=Europe/Amsterdam date +%y%m%d)
-          BASENAME="${DATE_SHORT} - Daily Newspapers.pdf"
-          MERGED="$OUTPUT_DIR/$BASENAME"
+          BASE="${DATE_SHORT} - Daily Newspapers"
+          OUT_BASE="$OUTPUT_DIR/$BASE"   # no .pdf; script emits “ - Part N.pdf”
 
-          echo "== Merge =="
-          if [ -d "$OUTPUT_DIR" ] && ls "$OUTPUT_DIR"/*.pdf >/dev/null 2>&1; then
-            python merge_pdfs.py --pattern "*.pdf" --skip-encrypted -o "$MERGED" "$OUTPUT_DIR"
-            echo "Merged file:"
-            ls -lh "$MERGED" || true
+          echo "== Merge with chunking =="
+          python merge_pdfs.py --pattern "*.pdf" --skip-encrypted --max-pages 1000 -o "$OUT_BASE" "$OUTPUT_DIR"
+          echo "Merged parts:"
+          ls -lh "$OUTPUT_DIR/$BASE - Part "*".pdf" || true
           else
             echo "No PDFs to merge."
             exit 78  # neutral; later steps still run due to 'if: always()'
           fi
 
-      - name: Package output (single PDF) and logs
+      - name: Package output (all merged parts) and logs
         if: always()
         run: |
           set -euo pipefail
           DATE_SHORT=$(TZ=Europe/Amsterdam date +%y%m%d)
-          BASENAME="${DATE_SHORT} - Daily Newspapers.pdf"
-          MERGED="output/$BASENAME"
+          BASE="${DATE_SHORT} - Daily Newspapers"
 
-          # Package the merged PDF (without the output/ prefix inside the tar)
-          if [ -f "$MERGED" ]; then
-            tar -czf daily_news.tar.gz -C output "$BASENAME"
+          # Collect parts into an array
+          mapfile -t PARTS < <(find output -maxdepth 1 -type f -name "${BASE} - Part *.pdf" -printf "%f\n" | sort)
+
+          if [ "${#PARTS[@]}" -gt 0 ]; then
+            echo "Packing ${#PARTS[@]} merged PDF(s):"
+            printf '%s\n' "${PARTS[@]}"
+            tar -czf daily_news.tar.gz -C output "${PARTS[@]}"
+          else
+            echo "::warning::No merged PDFs found to package."
           fi
 
-          # Package logs if present
+          # Logs
           if [ -d logs ]; then
             tar -czf news_logs.tar.gz -C logs .
           fi
