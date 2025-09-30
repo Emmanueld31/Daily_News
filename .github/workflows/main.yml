@@ -93,7 +93,7 @@ jobs:
 
           # Logs
           if [ -d logs ]; then
-            tar -czf news_logs.tar.gz -C logs .
+            tar -czf log_daily_news.tar.gz -C logs .
           fi
 
           ls -lh *.tar.gz || true
@@ -109,9 +109,9 @@ jobs:
               -in daily_news.tar.gz -out daily_news.tar.gz.enc \
               -pass env:ARTIFACT_PASS
           fi
-          if [ -f news_logs.tar.gz ]; then
+          if [ -f log_daily_news.tar.gz ]; then
             openssl enc -aes-256-cbc -salt -pbkdf2 \
-              -in news_logs.tar.gz -out news_logs.tar.gz.enc \
+              -in log_daily_news.tar.gz -out log_daily_news.tar.gz.enc \
               -pass env:ARTIFACT_PASS
           fi
           ls -lh *.enc || true
