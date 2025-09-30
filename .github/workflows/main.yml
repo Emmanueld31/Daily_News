@@ -123,6 +123,6 @@ jobs:
           name: daily-news-encrypted-${{ github.run_id }}
           path: |
             daily_news.tar.gz.enc
-            news_logs.tar.gz.enc
+            log_daily_news.tar.gz.enc
           retention-days: 14
           if-no-files-found: warn
