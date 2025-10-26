@@ -3,7 +3,7 @@ name: Daily News Routine
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 3 * * *'  # 03:00 UTC (~05:00 CEST / 04:00 CET)
+    - cron: '0 4 * * *'  # 03:00 UTC (~05:00 CEST / 04:00 CET)
 
 concurrency:
   group: daily-news
