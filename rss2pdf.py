@@ -5,6 +5,7 @@ import os, re, sys, time, tempfile, pathlib
 import feedparser, trafilatura
 import requests
 import html as ihtml
+import datetime
 from pypdf import PdfWriter, PdfReader
 from playwright.sync_api import sync_playwright
 
@@ -87,6 +88,16 @@ def build_pdf(feed_url, out_dir):
         context = browser.new_context(user_agent=UA)
 
         for idx, e in enumerate(fp.entries[:MAX_ITEMS]):
+            # --- Filter: only include articles from last 48h ---
+            cutoff = datetime.datetime.utcnow() - datetime.timedelta(hours=48)
+            published = None
+            if hasattr(e, "published_parsed") and e.published_parsed:
+              published = datetime.datetime.fromtimestamp(time.mktime(e.published_parsed))
+            elif hasattr(e, "updated_parsed") and e.updated_parsed:
+              published = datetime.datetime.fromtimestamp(time.mktime(e.updated_parsed))
+            if published and published < cutoff:
+                continue  # skip old articles
+ 
             url = e.get("link"); title = e.get("title") or (url or "Untitled")
             if not url: continue
 
@@ -144,3 +155,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
